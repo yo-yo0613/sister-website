@@ -15,7 +15,7 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed w-full z-50 bg-white/90 backdrop-blur-md border-b border-neutral-100">
+    <nav className="fixed w-full z-50 bg-primary backdrop-blur-md border-b border-primary-dark/20">
       <div className="max-w-7xl mx-auto px-8 h-24 flex justify-between items-center">
         
         {/* LOGO：使用 serif 字體增加高級感 */}
@@ -23,9 +23,9 @@ const Navbar: React.FC = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="text-2xl font-serif font-medium tracking-widest text-secondary"
+          className="text-2xl font-serif font-medium tracking-widest text-white"
         >
-          <Link to="/">SISTER <span className="text-primary-dark">STUDIO</span></Link>
+          <Link to="/">雞不 <span className="text-primary-light">擇食</span></Link>
         </motion.div>
 
         {/* 桌面版選單 */}
@@ -40,12 +40,12 @@ const Navbar: React.FC = () => {
               <Link
                 to={link.href}
                 className={`relative text-sm tracking-[0.15em] transition-colors duration-500 group ${
-                  location.pathname === link.href ? 'text-primary-dark' : 'text-secondary-light hover:text-secondary'
+                  location.pathname === link.href ? 'text-white font-bold' : 'text-white/80 hover:text-white'
                 }`}
               >
                 {link.title}
                 {/* 底部裝飾線條 */}
-                <span className={`absolute -bottom-2 left-0 h-[1px] bg-primary-dark transition-all duration-500 ${
+                <span className={`absolute -bottom-2 left-0 h-[1px] bg-white transition-all duration-500 ${
                   location.pathname === link.href ? 'w-full' : 'w-0 group-hover:w-full'
                 }`} />
               </Link>
