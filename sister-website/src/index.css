@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 修改 Editor.js 的區塊間距與字體 */
+#editorjs-container .ce-block__content {
+  max-width: 100%; /* 讓它填滿容器 */
+}
+
+#editorjs-container .ce-paragraph {
+  font-family: 'Noto Sans TC', sans-serif;
+  line-height: 2;
+  color: #6c584c; /* secondary */
+  font-size: 1.1rem;
+}
+
+#editorjs-container .ce-header {
+  font-family: 'Noto Serif TC', serif;
+  color: #582f0e; /* secondary-dark */
+  margin-top: 2rem;
+}
+
+/* 讓 "+" 號工具選單顏色變橘 */
+.ce-toolbar__plus, .ce-toolbar__settings-btn {
+  color: #d4a373 !important; /* primary */
+}
