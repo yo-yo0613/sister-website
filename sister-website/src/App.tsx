@@ -2,6 +2,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar/Navbar';
 import Home from './pages/Home';
 import About from './pages/About';
+import Taipei from './pages/Taipei';
+import NewTaipei from './pages/NewTaipei';
+import Taichung from './pages/Taichung';
 import AdOverlay from './components/AdOverlay/AdOverlay';
 import PostDetail from './pages/PostDetail';
 import Footer from './components/Footer/Footer';
@@ -28,6 +31,9 @@ export default function App() {
                 <Route path="/about" element={<About />} />
                 {/* ✅ 修正：前台路徑應該要對應到 PostDetail (內文頁) */}
                 <Route path="/post/:id" element={<PostDetail />} />
+                <Route path="/taipei" element={<Taipei />} />
+                <Route path="/newTaipei" element={<NewTaipei />} />
+                <Route path="/taichung" element={<Taichung />} />
               </Routes>
             </div>
             <Footer />
