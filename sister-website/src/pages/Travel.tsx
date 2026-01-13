@@ -1,19 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import PostCard from '../components/PostCard/PostCard';
+import PostCard from '../components/PostCard/PostCard'; // 💡 統一使用組件
 import { db } from '../firebase';
-// 💡 優化：引入 where 進行資料庫層級篩選
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { motion } from 'framer-motion';
 
-const Taipei: React.FC = () => {
+const Travel: React.FC = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 💡 實質優化：直接在資料庫篩選 category，效能比 .filter() 更好
     const q = query(
       collection(db, "posts"),
-      where("category", "==", "Taichung"),
+      where("category", "==", "Travel"), // 💡 確保 category 名稱正確
       where("status", "==", "published"),
       orderBy("createdAt", "desc")
     );
@@ -28,8 +26,8 @@ const Taipei: React.FC = () => {
   }, []);
 
   if (loading) return (
-    <div className="min-h-[60vh] flex items-center justify-center font-serif italic text-neutral-400">
-      正在同步台中的美食記憶...
+    <div className="min-h-[60vh] flex items-center justify-center font-serif italic text-neutral-400 animate-pulse">
+      正在讀取二姊的世界足跡...
     </div>
   );
 
@@ -41,9 +39,9 @@ const Taipei: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           className="text-5xl font-serif text-secondary italic mb-4"
         >
-          Taichung
+          Travel
         </motion.h1>
-        <p className="text-sm text-neutral-400 tracking-[0.3em] uppercase font-medium">台中美食探索 · 都市裡的味蕾旅行</p>
+        <p className="text-sm text-neutral-400 tracking-[0.3em] uppercase font-medium">出國旅遊 · 雞不擇食的世界足跡</p>
       </header>
 
       {posts.length > 0 ? (
@@ -58,11 +56,11 @@ const Taipei: React.FC = () => {
         </motion.div>
       ) : (
         <div className="py-32 text-center text-neutral-300 italic font-serif text-lg">
-          這裡暫時還沒有故事，敬請期待。
+          尚未開啟新的旅程。
         </div>
       )}
     </div>
   );
 };
 
-export default Taipei;
+export default Travel;

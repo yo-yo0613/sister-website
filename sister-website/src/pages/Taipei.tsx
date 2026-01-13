@@ -1,22 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import PostCard from '../components/PostCard/PostCard'; // 💡 引入新組件
+import PostCard from '../components/PostCard/PostCard';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+// 💡 優化：引入 where 進行資料庫層級篩選
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { motion } from 'framer-motion';
 
 const Taipei: React.FC = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 💡 採用最穩定的全抓取邏輯
-    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    // 💡 實質優化：直接在資料庫篩選 category，效能比 .filter() 更好
+    const q = query(
+      collection(db, "posts"),
+      where("category", "==", "Taipei"),
+      where("status", "==", "published"),
+      orderBy("createdAt", "desc")
+    );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        // 💡 關鍵篩選：依照頁面需求修改 "Taipei" 字串
-        .filter((post: any) => post.category === "Taipei" && post.status === "published");
-
+      const postsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPosts(postsData);
       setLoading(false);
     });
@@ -24,23 +27,39 @@ const Taipei: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div className="py-20 text-center font-serif italic text-neutral-400">正在同步雲端數據...</div>;
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center font-serif italic text-neutral-400">
+      正在同步台北的美食記憶...
+    </div>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="mb-12 border-b border-neutral-100 pb-8">
-        <h1 className="text-4xl font-serif text-secondary italic">Taipei</h1>
-        <p className="text-sm text-neutral-400 mt-2 tracking-widest uppercase">台北美食探索</p>
-      </div>
+    <div className="max-w-7xl mx-auto px-6 py-16">
+      <header className="mb-16 border-b border-neutral-100 pb-10">
+        <motion.h1 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-5xl font-serif text-secondary italic mb-4"
+        >
+          Taipei
+        </motion.h1>
+        <p className="text-sm text-neutral-400 tracking-[0.3em] uppercase font-medium">台北美食探索 · 都市裡的味蕾旅行</p>
+      </header>
 
       {posts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-20"
+        >
           {posts.map((post) => (
             <PostCard key={post.id} post={post} /> 
           ))}
-        </div>
+        </motion.div>
       ) : (
-        <div className="py-20 text-center text-neutral-300 italic">尚未有相關文章。</div>
+        <div className="py-32 text-center text-neutral-300 italic font-serif text-lg">
+          這裡暫時還沒有故事，敬請期待。
+        </div>
       )}
     </div>
   );

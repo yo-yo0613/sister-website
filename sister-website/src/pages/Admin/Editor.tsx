@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; // 新增
+import { useParams, useNavigate } from 'react-router-dom';
 import EditorJS from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import List from '@editorjs/list';
@@ -7,28 +7,33 @@ import ImageTool from '@editorjs/image';
 import Paragraph from '@editorjs/paragraph';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Editor: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // 取得網址 ID
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const editorRef = useRef<EditorJS | null>(null);
   
-  // 狀態管理
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Taipei'); // 預設台北
-  const [status, setStatus] = useState('published'); // 預設公開
+  const [category, setCategory] = useState('Taipei');
+  const [status, setStatus] = useState('published');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 💡 新增：SEO 相關狀態
+  const [seoDesc, setSeoDesc] = useState('');
+  const [seoKeywords, setSeoKeywords] = useState('');
+  const [showSEO, setShowSEO] = useState(false); // 控制 SEO 選單展開
 
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dt1ridsu5/image/upload";
   const UPLOAD_PRESET = "sister_preset";
 
-  // 初始化或編輯讀取
   useEffect(() => {
     const initEditor = (initialData?: any) => {
       if (!editorRef.current) {
         const editor = new EditorJS({
           holder: 'editorjs-container',
-          data: initialData || {}, // 如果是編輯模式，填入舊資料
+          data: initialData || {},
           tools: {
             header: { class: Header, inlineToolbar: true },
             paragraph: { class: Paragraph, inlineToolbar: true },
@@ -65,7 +70,10 @@ const Editor: React.FC = () => {
           setTitle(data.title);
           setCategory(data.category || 'Taipei');
           setStatus(data.status || 'published');
-          initEditor(data.content); // 傳入舊內容
+          // 💡 讀取舊有的 SEO 資料
+          setSeoDesc(data.seoDescription || '');
+          setSeoKeywords(data.seoKeywords || '');
+          initEditor(data.content);
         }
       } else {
         initEditor();
@@ -83,87 +91,143 @@ const Editor: React.FC = () => {
   }, [id]);
 
   const handlePublish = async () => {
-    if (!editorRef.current) return;
+    if (!editorRef.current || isSaving) return;
+    setIsSaving(true);
     try {
       const savedData = await editorRef.current.save();
-      if (!title.trim()) return alert("請輸入標題");
+      if (!title.trim()) {
+        setIsSaving(false);
+        return alert("請輸入標題");
+      }
 
+      // 💡 實質功能：將 SEO 資料一併存入 Firebase
       const postData = {
         title: title,
         content: savedData,
         category: category,
         status: status,
+        seoDescription: seoDesc,
+        seoKeywords: seoKeywords,
         updatedAt: serverTimestamp(),
       };
 
       if (isEditMode && id) {
-        // 編輯模式：更新現有文件
         await updateDoc(doc(db, "posts", id), postData);
-        alert("✨ 文章更新成功！");
       } else {
-        // 新增模式
         await addDoc(collection(db, "posts"), {
           ...postData,
           createdAt: serverTimestamp(),
           author: "二姊",
+          views: 0
         });
-        alert("🎉 文章發布成功！");
       }
-      navigate('/admin/posts'); // 跳轉回列表
+      navigate('/admin/posts');
     } catch (error) {
       console.error(error);
+      setIsSaving(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-10 px-4">
-      <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-neutral-100">
-        {/* 下拉選單區域 */}
-        <div className="flex flex-wrap gap-4 mb-8">
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-widest text-neutral-400 ml-1">分類</label>
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)}
-              className="bg-neutral-50 border-none rounded-xl text-sm font-bold text-secondary focus:ring-primary"
-            >
-              <option value="NewTaipei">新北</option>
-              <option value="Taipei">台北</option>
-              <option value="Taichung">台中</option>
+    <div className="min-h-screen bg-white">
+      {/* 頂部固定動作條 */}
+      <div className="sticky top-0 z-[60] bg-white/80 backdrop-blur-xl border-b border-neutral-100 px-6 py-4 flex justify-between items-center shadow-sm">
+        <button onClick={() => navigate('/admin/posts')} className="text-secondary opacity-40 hover:opacity-100 transition-opacity">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <div className="flex gap-3">
+           <button 
+            onClick={handlePublish}
+            disabled={isSaving}
+            className="px-8 py-2.5 bg-secondary text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-secondary/20 active:scale-95 transition-all"
+          >
+            {isSaving ? 'Saving...' : isEditMode ? 'Update' : 'Publish'}
+          </button>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-8 space-y-8">
+        {/* 分類與狀態 */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[9px] uppercase tracking-[0.2em] text-neutral-400 font-bold px-1">Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full bg-neutral-50 border-none rounded-2xl py-4 text-sm font-bold text-secondary focus:ring-primary/20">
+              <option value="NewTaipei">新北美食</option>
+              <option value="Taipei">台北美食</option>
+              <option value="Taichung">台中美食</option>
               <option value="Travel">出國旅遊</option>
             </select>
           </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-widest text-neutral-400 ml-1">狀態</label>
-            <select 
-              value={status} 
-              onChange={(e) => setStatus(e.target.value)}
-              className="bg-neutral-50 border-none rounded-xl text-sm font-bold text-secondary focus:ring-primary"
-            >
+          <div className="space-y-2">
+            <label className="text-[9px] uppercase tracking-[0.2em] text-neutral-400 font-bold px-1">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-neutral-50 border-none rounded-2xl py-4 text-sm font-bold text-secondary focus:ring-primary/20">
               <option value="published">公開發布</option>
-              <option value="draft">隱藏/草稿</option>
+              <option value="draft">設為草稿</option>
             </select>
           </div>
+        </motion.div>
+
+        {/* 💡 SEO 摺疊設定區 */}
+        <div className="bg-neutral-50 rounded-[2rem] overflow-hidden border border-neutral-100">
+          <button 
+            onClick={() => setShowSEO(!showSEO)}
+            className="w-full px-8 py-5 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-secondary hover:bg-neutral-100 transition-colors"
+          >
+            SEO Optimization {showSEO ? '↑' : '↓'}
+          </button>
+          
+          <AnimatePresence>
+            {showSEO && (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="px-8 pb-8 space-y-6"
+              >
+                <div className="space-y-2">
+                  <label className="text-[9px] text-neutral-400 uppercase tracking-widest font-bold">Search Description (描述)</label>
+                  <textarea 
+                    value={seoDesc}
+                    onChange={(e) => setSeoDesc(e.target.value)}
+                    placeholder="輸入網頁描述... (建議 150 字內，會顯示在 Google 搜尋結果)"
+                    rows={3}
+                    className="w-full bg-white border border-neutral-100 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-primary/10 resize-none font-sans"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] text-neutral-400 uppercase tracking-widest font-bold">Keywords (關鍵字)</label>
+                  <input 
+                    type="text" 
+                    value={seoKeywords}
+                    onChange={(e) => setSeoKeywords(e.target.value)}
+                    placeholder="台北美食, 忠孝復興, 必吃牛排 (以逗號隔開)"
+                    className="w-full bg-white border border-neutral-100 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <input 
-          type="text" 
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="在此輸入吸引人的標題" 
-          className="w-full text-4xl font-serif font-bold text-secondary border-none focus:ring-0 p-0 mb-8 bg-transparent"
-        />
-        <div id="editorjs-container" className="prose prose-stone max-w-none min-h-[500px]"></div>
-      </div>
+        {/* 標題輸入 */}
+        <div className="border-b border-neutral-50 pb-8 pt-4">
+          <textarea 
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter Title..." 
+            rows={1}
+            className="w-full text-4xl md:text-5xl font-serif font-bold text-secondary border-none focus:ring-0 p-0 bg-transparent placeholder:text-neutral-100 resize-none overflow-hidden"
+            onInput={(e: any) => {
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
+          />
+        </div>
 
-      <div className="flex justify-end gap-6 items-center pr-4">
-        <button 
-          onClick={handlePublish}
-          className="px-10 py-4 bg-secondary text-white rounded-full hover:bg-primary transition-all shadow-lg text-xs font-bold uppercase"
-        >
-          {isEditMode ? 'Update Article' : 'Publish Now'}
-        </button>
+        {/* 編輯器內容 */}
+        <div className="pb-40">
+          <div id="editorjs-container" className="prose prose-stone max-w-none min-h-[500px] prose-h2:font-serif prose-h2:italic prose-img:rounded-3xl"></div>
+        </div>
       </div>
     </div>
   );

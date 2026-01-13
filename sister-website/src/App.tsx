@@ -1,56 +1,81 @@
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+
+// 組件引入
 import Navbar from './components/Navbar/Navbar';
+import Footer from './components/Footer/Footer';
+import PreLoader from './components/PreLoader/PreLoader'; // 💡 新增載入動畫
+
+// 頁面引入
 import Home from './pages/Home';
-import About from './pages/About';
+import Travel from './pages/Travel';
 import Taipei from './pages/Taipei';
 import NewTaipei from './pages/NewTaipei';
 import Taichung from './pages/Taichung';
-import AdOverlay from './components/AdOverlay/AdOverlay';
+import ContactMe from './pages/ContactMe';
 import PostDetail from './pages/PostDetail';
-import Footer from './components/Footer/Footer';
 
-// 後台相關組件
+// 後台相關
 import AdminLayout from './pages/Admin/AdminLayout';
 import DashboardHome from './pages/Admin/DashboardHome';
 import Editor from './pages/Admin/Editor';
 import PostList from './pages/Admin/PostList';
+import AdSettings from './pages/Admin/AdSettings';
+import AblumManager from './pages/Admin/AblumManager';
 
-// src/App.tsx
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 💡 模擬初始化載入時間
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 2200); // 配合 PreLoader 的 1.5s delay + 0.8s transition
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <Router>
-      <Routes>
-        {/* 前台路徑 */}
-        <Route path="/*" element={
-          <>
-            <Navbar />
-            <AdOverlay />
-            <div className="pt-24">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                {/* ✅ 修正：前台路徑應該要對應到 PostDetail (內文頁) */}
-                <Route path="/post/:id" element={<PostDetail />} />
-                <Route path="/taipei" element={<Taipei />} />
-                <Route path="/newTaipei" element={<NewTaipei />} />
-                <Route path="/taichung" element={<Taichung />} />
-              </Routes>
-            </div>
-            <Footer />
-          </>
-        } />
+      {/* 💡 1. 品牌載入動畫 */}
+      <AnimatePresence mode="wait">
+        {loading && <PreLoader key="loader" />}
+      </AnimatePresence>
 
-        {/* 後台路徑 */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<DashboardHome />} />
-          <Route path="edit" element={<Editor />} />        {/* 用於新增 */}
-          <Route path="edit/:id" element={<Editor />} />    {/* 用於編輯 */}
-          {/* ✅ 修正：後台管理頁面的「文章」路徑應該對應到 PostList (列表頁) */}
-          <Route path="posts" element={<PostList />} /> 
-          {/* 如果需要在後台預覽，可以再加一行如下： */}
-          <Route path="posts/:id" element={<PostDetail />} />
-        </Route>
-      </Routes>
+      {/* 💡 2. 主要內容 (只有在非加載狀態下渲染，避免背景閃爍) */}
+      {!loading && (
+        <Routes>
+          {/* 前台路徑 */}
+          <Route path="/*" element={
+            <div className="flex flex-col min-h-screen">
+              <Navbar />
+              <div className="flex-grow pt-24">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/travel" element={<Travel />} />
+                  <Route path="/post/:id" element={<PostDetail />} />
+                  <Route path="/taipei" element={<Taipei />} />
+                  <Route path="/newTaipei" element={<NewTaipei />} />
+                  <Route path="/taichung" element={<Taichung />} />
+                  <Route path="/contact" element={<ContactMe />} />
+                </Routes>
+              </div>
+              <Footer />
+            </div>
+          } />
+
+          {/* 後台路徑 */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<DashboardHome />} />
+            <Route path="ads" element={<AdSettings />} />
+            <Route path="edit" element={<Editor />} />
+            <Route path="edit/:id" element={<Editor />} />
+            <Route path="posts" element={<PostList />} />
+            <Route path="posts/:id" element={<PostDetail />} />
+            <Route path="album" element={<AblumManager />} />
+          </Route>
+        </Routes>
+      )}
     </Router>
   );
 }

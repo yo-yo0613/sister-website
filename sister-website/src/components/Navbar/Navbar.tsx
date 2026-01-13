@@ -9,11 +9,11 @@ const Navbar: React.FC = () => {
   // 導覽選項：對應你的頁面路徑
   const navLinks = [
     { title: '首頁', href: '/' },
-    { title: '出國旅遊', href: '/about' },
-    { title: '新北', href: '/NewTaipei' },
-    { title: '台北', href: '/Taipei' },
-    { title: '台中', href: '/Taichung' },
-
+    { title: '出國旅遊', href: '/travel' },
+    { title: '新北', href: '/newTaipei' },
+    { title: '台北', href: '/taipei' },
+    { title: '台中', href: '/taichung' },
+    { title: '關於雞不擇食', href: '/contact' },
   ];
 
   return (
