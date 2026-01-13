@@ -1,13 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-import instaloader
+import requests
 import os
 import uuid
+import time
+import re
 
-app = FastAPI(title="IG Scraper API (Python 3.14)")
+app = FastAPI(title="IG Scraper API via RapidAPI")
 
-# --- 1. 跨域設定 (CORS) ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,80 +17,105 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 2. 目錄設定 ---
 IMAGE_DIR = "static/images"
-SESSION_DIR = "sessions" # 存放登入資訊
 os.makedirs(IMAGE_DIR, exist_ok=True)
-os.makedirs(SESSION_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- 3. Instaloader 初始化與登入 ---
-L = instaloader.Instaloader(
-    dirname_pattern=IMAGE_DIR, # 讓下載路徑固定
-    download_video_thumbnails=False,
-    save_metadata=False,
-    post_metadata_txt_pattern=""
-)
+RAPID_API_KEY = "afc5e7fb6cmsh9528485928081e3p179cb3jsne6ec208cc19c"
+RAPID_API_HOST = "instagram-scraper-stable-api.p.rapidapi.com"
+API_URL = "https://instagram-scraper-stable-api.p.rapidapi.com/get_ig_user_posts.php"
 
-IG_USERNAME = "你的帳號" # 替換為你的 IG 帳號
-IG_PASSWORD = "你的密碼" # 替換為你的 IG 密碼
-
-def login_ig():
-    session_file = os.path.join(SESSION_DIR, f"session-{IG_USERNAME}")
+@app.get("/api/crawl_and_sort/{username}")
+async def crawl_and_sort(username: str):
     try:
-        # 嘗試讀取舊有的 Session
-        L.load_session_from_file(IG_USERNAME, filename=session_file)
-        print("✅ 成功從檔案讀取 Session")
-    except FileNotFoundError:
-        # 若無檔案則重新登入
-        print("🔑 正在嘗試重新登入 Instagram...")
-        try:
-            L.login(IG_USERNAME, IG_PASSWORD)
-            L.save_session_to_file(filename=session_file)
-            print("💾 登入成功並已儲存 Session 檔案")
-        except Exception as e:
-            print(f"❌ 登入失敗: {e}")
+        payload = {"username_or_url": username}
+        headers = {
+            "content-type": "application/x-www-form-urlencoded",
+            "x-rapidapi-key": RAPID_API_KEY,
+            "x-rapidapi-host": RAPID_API_HOST
+        }
+        response = requests.post(API_URL, data=payload, headers=headers)
+        res_data = response.json()
+        #print(res_data)
 
-# 啟動時執行登入
-login_ig()
-
-@app.get("/api/crawl/{username}")
-async def crawl_ig(username: str, limit: int = 5):
-    try:
-        profile = instaloader.Profile.from_username(L.context, username)
-        posts_data = []
+        # --- 除錯診斷點 ---
+        print(f"DEBUG: API 回傳鍵值: {res_data.keys()}")
         
-        # 遍歷貼文
-        for count, post in enumerate(profile.get_posts()):
-            if count >= limit:
-                break
-            
-            # 建立唯一檔名
-            img_id = uuid.uuid4().hex
-            img_filename = f"{username}_{img_id}.jpg"
-            target_path = os.path.join(IMAGE_DIR, img_filename)
-            
-            # 下載圖片
-            # 注意：Instaloader 會下載到一個資料夾，我們手動搬運或直接抓 URL
-            # 為了簡單起見，我們直接回傳 IG 原始 URL (如果只是暫時顯示)
-            # 或使用 L.download_pic 下載
-            L.download_pic(target_path, post.url, post.date_utc)
-            
-            posts_data.append({
-                "post_id": post.shortcode,
-                "caption": post.caption,
-                "local_image_url": f"http://localhost:8000/static/images/{img_filename}",
-                "hashtags": post.hashtags,
-                "likes": post.likes,
-                "timestamp": post.date_utc.isoformat()
-            })
-            
-        return {"status": "success", "data": posts_data}
+        # 自動偵測資料位置
+        items = res_data.get("posts") or res_data.get("data", {}).get("items") or []
+        
+        if not items:
+            print("⚠️ 警告：API 回傳了成功狀態，但裡面沒有貼文資料。可能是帳號設為私密或額度限制。")
+            # 這裡可以印出 res_data 看看裡面到底是什麼
+            print(f"DEBUG 內容: {str(res_data)[:200]}")
+        
+        # 根據你截圖的 JSON 結構提取
+        items = res_data.get("posts", [])
+        categorized_data = {"newTaipei": [], "taipei": [], "taichung": [], "other": []}
 
+        for count, item_wrapper in enumerate(items):
+            # 有些 API node 在第一層，有些在 wrapper 裡
+            item = item_wrapper.get("node", item_wrapper) 
+            
+            post_id = item.get("code") or item.get("shortcode")
+            caption_obj = item.get("caption") or {}
+            full_text = caption_obj.get("text", "") if isinstance(caption_obj, dict) else str(caption_obj)
+            
+            # 💡 萬用圖片搜尋：嘗試所有可能的圖片欄位
+            image_url = (
+                item.get("display_url") or 
+                item.get("image_versions2", {}).get("candidates", [{}])[0].get("url") or
+                item.get("image_versions", {}).get("items", [{}])[0].get("url") or
+                item.get("thumbnail_src") or
+                item.get("display_src")
+            )
+
+            # 如果還是抓不到，檢查是不是影片，抓影片的封面圖
+            if not image_url and "video_versions" in item:
+                image_url = item.get("image_versions", {}).get("items", [{}])[0].get("url")
+
+            print(f"正在處理第 {count+1} 則貼文 [ID: {post_id}] | 圖片抓取: {'✅ 成功' if image_url else '❌ 失敗'}")
+
+            final_image = ""
+            if image_url:
+                img_filename = f"{uuid.uuid4().hex}.jpg"
+                target_path = os.path.join(IMAGE_DIR, img_filename)
+                try:
+                    img_headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                        "Referer": "https://www.instagram.com/"
+                    }
+                    img_res = requests.get(image_url, headers=img_headers, timeout=15)
+                    if img_res.status_code == 200:
+                        with open(target_path, 'wb') as f:
+                            f.write(img_res.content)
+                        # 使用 localhost 確保 React 讀得到
+                        final_image = f"http://localhost:8000/static/images/{img_filename}"
+                except Exception as e:
+                    print(f"   ∟ 圖片存檔失敗: {e}")
+            
+            post_item = {
+                "id": post_id,
+                "title": full_text.split('\n')[0] if full_text else "無標題",
+                "image": final_image,
+                "date": time.strftime('%Y-%m-%d'),
+                "tags": re.findall(r"#(\w+)", full_text)
+            }
+
+            # 分類邏輯 (判斷文字或標籤)
+            search_str = full_text.lower()
+            if "新北" in search_str:
+                categorized_data["newTaipei"].append(post_item)
+            elif "台北" in search_str:
+                categorized_data["taipei"].append(post_item)
+            elif "台中" in search_str:
+                categorized_data["taichung"].append(post_item)
+            else:
+                categorized_data["other"].append(post_item)
+                
+        return {"status": "success", "data": categorized_data}
     except Exception as e:
-        # 如果遇到 401 錯誤，嘗試重新登入一次
-        if "401" in str(e):
-            login_ig()
+        print(f"🔥 Error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":

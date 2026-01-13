@@ -3,6 +3,8 @@ import Navbar from './components/Navbar/Navbar';
 import Home from './pages/Home';
 import About from './pages/About';
 import AdOverlay from './components/AdOverlay/AdOverlay';
+import PostDetail from './pages/PostDetail';
+import Footer from './components/Footer/Footer';
 
 // 後台相關組件
 import AdminLayout from './pages/Admin/AdminLayout';
@@ -10,6 +12,7 @@ import DashboardHome from './pages/Admin/DashboardHome';
 import Editor from './pages/Admin/Editor';
 import PostList from './pages/Admin/PostList';
 
+// src/App.tsx
 export default function App() {
   return (
     <Router>
@@ -23,16 +26,23 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/about" element={<About />} />
+                {/* ✅ 修正：前台路徑應該要對應到 PostDetail (內文頁) */}
+                <Route path="/post/:id" element={<PostDetail />} />
               </Routes>
             </div>
+            <Footer />
           </>
         } />
 
-        {/* 後台路徑：嵌套路由 (Nested Routes) */}
+        {/* 後台路徑 */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<DashboardHome />} />
-          <Route path="edit" element={<Editor />} />
-          <Route path="posts" element={<PostList />} />
+          <Route path="edit" element={<Editor />} />        {/* 用於新增 */}
+          <Route path="edit/:id" element={<Editor />} />    {/* 用於編輯 */}
+          {/* ✅ 修正：後台管理頁面的「文章」路徑應該對應到 PostList (列表頁) */}
+          <Route path="posts" element={<PostList />} /> 
+          {/* 如果需要在後台預覽，可以再加一行如下： */}
+          <Route path="posts/:id" element={<PostDetail />} />
         </Route>
       </Routes>
     </Router>

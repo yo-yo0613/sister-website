@@ -1,40 +1,78 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+// 1. 引入 Firebase
+import { db } from '../firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 const About: React.FC = () => {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 2. 監聽 Firestore 的 posts 集合
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const postsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPosts(postsData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) return <div className="py-20 text-center font-serif italic text-neutral-400">正在讀取旅遊故事...</div>;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.8 }}
-      className="min-h-screen bg-white pt-32 px-10"
-    >
-      <div className="max-w-4xl mx-auto">
-        <motion.h2 
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          className="text-3xl font-serif text-secondary border-l-4 border-primary pl-6 mb-12"
-        >
-          關於我們 <span className="text-sm text-neutral-400 block tracking-widest uppercase mt-2">About Sister</span>
-        </motion.h2>
-        
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div className="aspect-[3/4] bg-neutral-100 overflow-hidden">
-             {/* 這裡之後放二姊的照片 */}
-             <div className="w-full h-full bg-primary-light/20 flex items-center justify-center text-secondary-light tracking-widest">IMAGE PLACEHOLDER</div>
-          </div>
-          <div className="space-y-6">
-            <p className="text-secondary leading-relaxed tracking-wide">
-              這裡寫入關於二姊的專業背景或是網頁的創立初衷。我們採用簡約且極具質感的設計語彙，為每一位客戶提供最精準的解決方案。
-            </p>
-            <p className="text-neutral-400 leading-relaxed">
-              以低飽和度的橘色與咖啡色為基調，營造出溫暖且值得信賴的企業形象。
-            </p>
-          </div>
-        </div>
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="mb-12 border-b border-neutral-100 pb-8">
+        <h1 className="text-4xl font-serif text-secondary italic">出國旅遊</h1>
+        <p className="text-sm text-neutral-400 mt-2 tracking-widest uppercase">雞不擇食的世界足跡</p>
       </div>
-    </motion.div>
+
+      {posts.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+          {posts.map((post) => (
+            // 3. 使用 Link 讓每篇文章可以點擊進入詳情頁
+            <Link to={`/post/${post.id}`} key={post.id} className="group block">
+              <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
+                {/* 顯示縮圖 */}
+                <div className="aspect-[4/3] overflow-hidden bg-neutral-100">
+                  {post.content?.blocks?.find((b: any) => b.type === 'image') ? (
+                    <img 
+                      src={post.content.blocks.find((b: any) => b.type === 'image').data.file.url} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      alt={post.title}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-300 text-xs">No Image</div>
+                  )}
+                </div>
+                {/* 顯示文字資訊 */}
+                <div className="p-6">
+                  <span className="text-[10px] tracking-[0.2em] text-primary font-bold uppercase mb-2 block">
+                    {post.category || 'Travel'}
+                  </span>
+                  <h3 className="text-xl font-serif font-bold text-secondary line-clamp-2 mb-4">
+                    {post.title}
+                  </h3>
+                  <p className="text-neutral-400 text-[10px] uppercase tracking-widest">
+                    {post.createdAt?.toDate().toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="py-20 text-center">
+          <p className="text-neutral-300 italic font-serif">尚未有相關文章。</p>
+        </div>
+      )}
+    </div>
   );
 };
 

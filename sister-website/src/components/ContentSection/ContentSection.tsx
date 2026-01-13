@@ -79,7 +79,7 @@ const ContentSection = () => {
       >
         <div className="text-center mb-12">
           <h2 className="text-3xl font-serif text-secondary mb-2">Follow us on IG</h2>
-          <p className="text-primary text-sm tracking-widest">@SISTER_STUDIO</p>
+          <p className="text-primary text-sm tracking-widest">@XUN.G_FOODIE</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
           {[1,2,3,4,5,6].map((i) => (

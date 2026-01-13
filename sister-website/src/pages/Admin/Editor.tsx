@@ -1,115 +1,168 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom'; // 新增
 import EditorJS from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import List from '@editorjs/list';
 import ImageTool from '@editorjs/image';
 import Paragraph from '@editorjs/paragraph';
-
-// 引入 Firebase 實例
-import { storage, db } from '../../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 const Editor: React.FC = () => {
+  const { id } = useParams<{ id: string }>(); // 取得網址 ID
+  const navigate = useNavigate();
   const editorRef = useRef<EditorJS | null>(null);
-  const [title, setTitle] = useState(''); // 管理文章標題狀態
+  
+  // 狀態管理
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('Taipei'); // 預設台北
+  const [status, setStatus] = useState('published'); // 預設公開
+  const [isEditMode, setIsEditMode] = useState(false);
 
+  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dt1ridsu5/image/upload";
+  const UPLOAD_PRESET = "sister_preset";
+
+  // 初始化或編輯讀取
   useEffect(() => {
-    if (!editorRef.current) {
-      const editor = new EditorJS({
-        holder: 'editorjs-container',
-        tools: {
-          header: { class: Header, inlineToolbar: true },
-          paragraph: { class: Paragraph, inlineToolbar: true },
-          list: { class: List, inlineToolbar: true },
-          image: {
-            class: ImageTool,
-            config: {
-              uploader: {
-                // 重寫上傳功能
-                async uploadByFile(file: File) {
-                  try {
-                    // 1. 定義在 Storage 中的儲存路徑
-                    const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
-                    // 2. 上傳原始檔案
-                    const snapshot = await uploadBytes(storageRef, file);
-                    // 3. 取得可讀取的圖片 URL
-                    const downloadURL = await getDownloadURL(snapshot.ref);
-
-                    return {
-                      success: 1,
-                      file: { url: downloadURL }
-                    };
-                  } catch (error) {
-                    console.error("Firebase 上傳錯誤:", error);
-                    return { success: 0 };
+    const initEditor = (initialData?: any) => {
+      if (!editorRef.current) {
+        const editor = new EditorJS({
+          holder: 'editorjs-container',
+          data: initialData || {}, // 如果是編輯模式，填入舊資料
+          tools: {
+            header: { class: Header, inlineToolbar: true },
+            paragraph: { class: Paragraph, inlineToolbar: true },
+            list: { class: List, inlineToolbar: true },
+            image: {
+              class: ImageTool,
+              config: {
+                uploader: {
+                  async uploadByFile(file: File) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('upload_preset', UPLOAD_PRESET);
+                    const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+                    const data = await res.json();
+                    return { success: 1, file: { url: data.secure_url } };
                   }
                 }
               }
             }
-          }
-        },
-        placeholder: '點擊此處，開始撰寫妳的時尚故事...',
-        onChange: async () => {
-          // 你可以在這裡做自動存檔草稿的邏輯
+          },
+          placeholder: '開始妳的時尚故事...',
+        });
+        editorRef.current = editor;
+      }
+    };
+
+    const fetchPostData = async () => {
+      if (id) {
+        setIsEditMode(true);
+        const docRef = doc(db, "posts", id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setTitle(data.title);
+          setCategory(data.category || 'Taipei');
+          setStatus(data.status || 'published');
+          initEditor(data.content); // 傳入舊內容
         }
-      });
-      editorRef.current = editor;
-    }
+      } else {
+        initEditor();
+      }
+    };
+
+    fetchPostData();
 
     return () => {
-      if (editorRef.current && editorRef.current.destroy) {
+      if (editorRef.current && typeof editorRef.current.destroy === 'function') {
         editorRef.current.destroy();
         editorRef.current = null;
       }
     };
-  }, []);
+  }, [id]);
 
-  // 實作「發布文章」功能
   const handlePublish = async () => {
     if (!editorRef.current) return;
-
     try {
       const savedData = await editorRef.current.save();
-      
-      // 將資料存入 Firestore
-      const docRef = await addDoc(collection(db, "posts"), {
-        title: title,
-        content: savedData, // Editor.js 的 JSON 結構
-        createdAt: serverTimestamp(),
-        author: "二姊"
-      });
+      if (!title.trim()) return alert("請輸入標題");
 
-      alert("文章發布成功！ID: " + docRef.id);
+      const postData = {
+        title: title,
+        content: savedData,
+        category: category,
+        status: status,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (isEditMode && id) {
+        // 編輯模式：更新現有文件
+        await updateDoc(doc(db, "posts", id), postData);
+        alert("✨ 文章更新成功！");
+      } else {
+        // 新增模式
+        await addDoc(collection(db, "posts"), {
+          ...postData,
+          createdAt: serverTimestamp(),
+          author: "二姊",
+        });
+        alert("🎉 文章發布成功！");
+      }
+      navigate('/admin/posts'); // 跳轉回列表
     } catch (error) {
-      console.error("發布失敗:", error);
-      alert("發布失敗，請檢查網路或權限");
+      console.error(error);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-10">
-      <div className="bg-white p-10 rounded-3xl shadow-sm border border-neutral-100">
+    <div className="max-w-4xl mx-auto space-y-8 py-10 px-4">
+      <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-neutral-100">
+        {/* 下拉選單區域 */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-widest text-neutral-400 ml-1">分類</label>
+            <select 
+              value={category} 
+              onChange={(e) => setCategory(e.target.value)}
+              className="bg-neutral-50 border-none rounded-xl text-sm font-bold text-secondary focus:ring-primary"
+            >
+              <option value="NewTaipei">新北</option>
+              <option value="Taipei">台北</option>
+              <option value="Taichung">台中</option>
+              <option value="Travel">出國旅遊</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-widest text-neutral-400 ml-1">狀態</label>
+            <select 
+              value={status} 
+              onChange={(e) => setStatus(e.target.value)}
+              className="bg-neutral-50 border-none rounded-xl text-sm font-bold text-secondary focus:ring-primary"
+            >
+              <option value="published">公開發布</option>
+              <option value="draft">隱藏/草稿</option>
+            </select>
+          </div>
+        </div>
+
         <input 
           type="text" 
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="在此輸入吸引人的標題" 
-          className="w-full text-5xl font-serif font-bold text-secondary placeholder:text-neutral-200 border-none focus:ring-0 p-0 mb-6"
+          className="w-full text-4xl font-serif font-bold text-secondary border-none focus:ring-0 p-0 mb-8 bg-transparent"
         />
-        <div className="h-[1px] bg-neutral-100 w-full mb-10" />
-        <div id="editorjs-container" className="prose prose-orange max-w-none min-h-[400px]"></div>
+        <div id="editorjs-container" className="prose prose-stone max-w-none min-h-[500px]"></div>
       </div>
 
-      <div className="flex justify-end gap-4">
-        <button className="px-8 py-3 text-neutral-400 hover:text-secondary transition-colors tracking-widest text-sm font-medium">
-          存為草稿
-        </button>
+      <div className="flex justify-end gap-6 items-center pr-4">
         <button 
           onClick={handlePublish}
-          className="px-10 py-3 bg-secondary text-white rounded-full hover:bg-primary transition-all shadow-lg tracking-[0.2em] text-sm font-bold"
+          className="px-10 py-4 bg-secondary text-white rounded-full hover:bg-primary transition-all shadow-lg text-xs font-bold uppercase"
         >
-          發布文章
+          {isEditMode ? 'Update Article' : 'Publish Now'}
         </button>
       </div>
     </div>

@@ -40,11 +40,11 @@ const AdOverlay: React.FC = () => {
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative bg-white p-2 rounded-lg shadow-2xl max-w-lg w-full overflow-hidden"
+            className="relative bg-white p-7 rounded-lg shadow-2xl max-w-lg w-full overflow-hidden mt-5"
           >
             <button 
               onClick={() => setShow(false)}
-              className="absolute top-4 right-4 text-secondary hover:text-primary transition-colors z-10"
+              className="absolute top-1 right-4 text-neutral hover:text-neutral-700 transition-colors z-10"
             >
               ✕ 關閉
             </button>

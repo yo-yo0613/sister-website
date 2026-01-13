@@ -16,7 +16,7 @@ const AdminLayout: React.FC = () => {
       {/* 側邊導覽列 */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-100 font-serif text-xl font-bold text-secondary">
-          SISTER <span className="text-primary">ADMIN</span>
+          雞不 <span className="text-primary">擇食 </span>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           {menuItems.map((item) => (

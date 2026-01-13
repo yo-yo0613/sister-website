@@ -20,8 +20,11 @@ const ArticleCard = ({ category, title, date, image }: Props) => {
         <motion.img 
           whileHover={{ scale: 1.08 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          src={image} 
+          src={image || "https://via.placeholder.com/300x400?text=No+Image"} // 加入預設圖
           className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x400?text=Error";
+          }}
         />
       </div>
       <p className="text-[10px] tracking-[0.2em] text-primary font-bold uppercase mb-2">
