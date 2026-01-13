@@ -1,5 +1,12 @@
 {
   "projects": {
     "default": "sister-website-721f5"
+  },
+  "targets": {
+    "sister-website-721f5": {
+      "hosting": {
+        "web": ["xungfoodie"]
+      }
+    }
   }
 }
