@@ -22,7 +22,7 @@ const PostList: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  
+
   // 💡 搜尋狀態
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -32,7 +32,7 @@ const PostList: React.FC = () => {
   const filteredPosts = useMemo(() => {
     const allPosts = [...firebasePosts, ...igPosts];
     if (!searchTerm.trim()) return allPosts;
-    
+
     return allPosts.filter(post => 
       (post.title && post.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (post.category && post.category.toLowerCase().includes(searchTerm.toLowerCase()))
