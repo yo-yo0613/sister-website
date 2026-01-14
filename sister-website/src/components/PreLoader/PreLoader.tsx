@@ -42,7 +42,7 @@ const PreLoader: React.FC = () => {
         transition={{ delay: 0.5 }}
         className="text-[10px] tracking-[0.5em] text-secondary/40 uppercase mt-4 font-bold"
       >
-        Gourmet & Lifestyle
+        🐥｜哈囉大家好 我是燻雞 愛吃美食 愛分享｜ 主要收錄平價美食給大家
       </motion.p>
     </motion.div>
   );

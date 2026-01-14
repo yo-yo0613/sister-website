@@ -32,7 +32,7 @@ const Footer: React.FC = () => {
               <li><Link to="/newTaipei" className="hover:text-primary transition-colors">新北食記</Link></li>
               <li><Link to="/taipei" className="hover:text-primary transition-colors">台北食記</Link></li>
               <li><Link to="/taichung" className="hover:text-primary transition-colors">台中食記</Link></li>
-              <li><Link to="/contact" className="hover:text-primary transition-colors">關於二姊</Link></li>
+              <li><Link to="/contact" className="hover:text-primary transition-colors">關於雞不擇食</Link></li>
             </ul>
           </div>
 
