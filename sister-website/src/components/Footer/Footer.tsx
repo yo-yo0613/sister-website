@@ -28,9 +28,10 @@ const Footer: React.FC = () => {
           <div className="md:col-span-3 space-y-6">
             <h4 className="text-[10px] tracking-[0.4em] font-bold text-secondary uppercase">Navigation</h4>
             <ul className="space-y-4 text-sm font-medium text-secondary/60">
-              <li><Link to="/taipei" className="hover:text-primary transition-colors">台北食記</Link></li>
               <li><Link to="/travel" className="hover:text-primary transition-colors">出國旅遊</Link></li>
-              <li><Link to="/album" className="hover:text-primary transition-colors">日常相簿</Link></li>
+              <li><Link to="/newTaipei" className="hover:text-primary transition-colors">新北食記</Link></li>
+              <li><Link to="/taipei" className="hover:text-primary transition-colors">台北食記</Link></li>
+              <li><Link to="/taichung" className="hover:text-primary transition-colors">台中食記</Link></li>
               <li><Link to="/contact" className="hover:text-primary transition-colors">關於二姊</Link></li>
             </ul>
           </div>
