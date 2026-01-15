@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sister-backend
+spec:
+  replicas: 2 # 💡 K8s 會幫妳跑兩個後端，壞掉一個另一個會頂住
+  selector:
+    matchLabels:
+      app: sister-backend
+  template:
+    metadata:
+      labels:
+        app: sister-backend
+    spec:
+      containers:
+      - name: backend
+        image: sister-backend:latest # 💡 使用妳剛剛打包的 Image
+        imagePullPolicy: Never # 💡 測試時先用本地 Image
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://sister-db-service:5432/sister_cms"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "admin"
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: "password123"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sister-backend-service
+spec:
+  type: NodePort # 💡 讓妳可以從電腦瀏覽器連進去
+  selector:
+    app: sister-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080 # 💡 之後訪問 http://localhost:30080

@@ -2,3 +2,6 @@
 __pycache__/
 static/images/
 *.pyc
+
+# Firebase Service Account Key
+**/serviceAccountKey.json
